@@ -1,0 +1,563 @@
+Ruby Encryption Unit Test:
+
+https://bioiqjira.atlassian.net/browse/REPORTS-436
+
+
+
+
+Database:
+bioiq.staging.ods.db.server=10.25.53.25
+bioiq.staging.ods.db.port=3306
+bioiq.staging.ods.db.name=bioiq_ods_staging
+
+
+
+Tables: to test with:
+
+
+	#stage_dim_user
+	select user_key,
+	user_id,
+	encrypted_first_name,
+	core_encrypted_first_name,
+	encrypted_last_name
+	, core_encrypted_last_name
+	, encrypted_ssn
+	, core_encrypted_ssn
+	, encrypted_external_pin
+	, core_encrypted_external_pin
+	, bill_addr1
+	, core_bill_addr1
+	,  bill_addr2
+	, core_bill_addr2
+	, ship_addr1
+	, core_ship_addr1
+	, ship_addr2
+	, core_ship_addr2
+	, current_encrypted_first_name
+	, core_current_encrypted_first_name
+	, current_encrypted_last_name
+	, core_current_encrypted_last_name
+	, is_current
+	, is_deleted
+	 from stage_dim_user
+	where core_ship_addr1 is not null
+	  #where core_ship_addr1 != 'NULL'
+	  
+	 ;
+
+
+#stage_dim_event
+select 
+ event_key
+,encrypted_street
+,core_encrypted_street
+,encrypted_suite
+,core_encrypted_suite
+,street
+,core_street
+,suite
+,core_suite
+from stage_dim_event
+where street is not null
+;
+
+
+
+
+#stage_dim_program
+select
+program_id,
+ shipping_address_encrypted_street,
+ core_shipping_address_encrypted_street,
+ shipping_address_encrypted_suite,
+ core_shipping_address_encrypted_suite
+ from stage_dim_program
+ where core_shipping_address_encrypted_street is not null
+;
+
+desc stage_physician_addresses;
+
+#stagetwo_physician_addresses 
+select id,
+encrypted_street,
+core_encrypted_street,
+encrypted_suite,
+core_encrypted_suite
+from stagetwo_physician_addresses
+;
+
+ 
+
+
+#stage_dim_insurance_policy
+select 
+insurance_policy_key,
+shipping_address_encrypted_street,
+core_shipping_address_encrypted_street, 
+shipping_address_encrypted_suite,
+core_shipping_address_encrypted_suite
+ from stage_dim_insurance_policy
+;
+
+
+select * from stage_dim_entity;
+
+
+#stage_dim_entity
+ select 
+ entity_key,
+shipping_address_encrypted_street,
+core_shipping_address_encrypted_street, 
+shipping_address_encrypted_suite,
+core_shipping_address_encrypted_suite
+ from stage_dim_entity
+;
+
+ 
+ 
+ ;
+ #stage_dim_lab
+select 
+lab_key,
+shipping_address_encrypted_street,
+core_shipping_address_encrypted_street, 
+shipping_address_encrypted_suite,
+core_shipping_address_encrypted_suite,
+billing_address_encrypted_street,
+core_billing_address_encrypted_street,
+billing_address_encrypted_suite,
+core_billing_address_encrypted_suite
+ from stage_dim_lab
+;
+
+#core only ?
+select 
+patient_service_center_key,
+encrypted_street
+, encrypted_suite
+ from dim_patient_service_center
+limit 5;
+
+
+
+
+
+#pentaho call via crontab to populate the tables:
+
+Note:  the job currenly sends data to stage_  tables  e.g.
+stage_dim_program
+stage_dim_event
+stage_dim_program  etc.
+
+#54 10  * * * cd /app/pentaho/data-integration && ./pan.sh -rep=bioiq -dir=/ODS/Dimension -trans=audit_load_dim_user -param:START_DATE='2017-03-01 00:00:00' -param:END_DATE='2017-04-01 23:59:59' > /home/bioiq/audit_load_dim_user.log 2>&1
+#54 10  * * * cd /app/pentaho/data-integration && ./pan.sh -rep=bioiq -dir=/ODS/Dimension -trans=audit_load_dim_event -param:START_DATE='2017-03-01 00:00:00' -param:END_DATE='2017-04-01 23:59:59' > /home/bioiq/audit_load_dim_event.log 2>&1
+#27 13  * * * cd /app/pentaho/data-integration && ./pan.sh -rep=bioiq -dir=/ODS/Dimension -trans=audit_load_dim_program -param:START_DATE='2017-03-01 00:00:00' -param:END_DATE='2017-04-01 23:59:59' > /home/bioiq/audit_load_dim_program.log 2>&1
+#27 11  * * * cd /app/pentaho/data-integration && ./pan.sh -rep=bioiq -dir=/ODS/Dimension -trans=audit_load_physician_addresses -param:START_DATE='2017-03-01 00:00:00' -param:END_DATE='2017-04-01 23:59:59' > /home/bioiq/audit_audit_load_physician_addresses.log 2>&1
+#14  13  * * * cd /app/pentaho/data-integration && ./pan.sh -rep=bioiq -dir=/ODS/Dimension -trans=audit_load_dim_entity -param:START_DATE='2017-01-01 00:00:00' -param:END_DATE='2017-04-01 23:59:59' > /home/bioiq/audit_load_dim_entity.log 2>&1
+#02 09  * * * cd /app/pentaho/data-integration && ./pan.sh -rep=bioiq -dir=/ODS/Dimension -trans=audit_load_dim_lab -param:START_DATE='2017-03-01 00:00:00' -param:END_DATE='2017-04-01 23:59:59' > /home/bioiq/audit_load_dim_lab.log 2>&1
+40 11  * * * cd /app/pentaho/data-integration && ./pan.sh -rep=bioiq -dir=/ODS/Dimension -trans=audit_load_dim_insurance_policy -param:START_DATE='2014-11-17 00:00:00' -param:END_DATE='2014-11-17 23:59:59' > /home/bioiq/audit_load_dim_insurance_policy.log 2>&1
+
+
+
+ 
+#ruby call
+#stage_dim_user
+RAILS_ENV=production bundle exec rake db:decrypt:init[stage_dim_user,user_key] TARGET_COLUMNS=encrypted_first_name,encrypted_last_name,encrypted_ssn,encrypted_external_pin,bill_addr1,bill_addr2,ship_addr1,ship_addr2,current_encrypted_first_name,current_encrypted_last_name
+
+#stage_dim_event
+RAILS_ENV=production bundle exec rake db:decrypt:init[stage_dim_event,event_key] TARGET_COLUMNS=encrypted_street,encrypted_suite
+
+#note ref: stage_dim_event see        https://bioiqjira.atlassian.net/browse/REPORTS-431?filter=-2
+#  (street and suite are plain text)
+
+
+#stage_dim_program
+RAILS_ENV=production bundle exec rake db:decrypt:init[stagetwo_physician_addresses,id] TARGET_COLUMNS=encrypted_street,encrypted_suite
+
+
+#stagetwo_physician_addresses
+RAILS_ENV=production bundle exec rake db:decrypt:init[stage_dim_event,event_key] TARGET_COLUMNS=encrypted_street,encrypted_suite
+
+#stage_dim_insurance_policy  
+RAILS_ENV=production bundle exec rake db:decrypt:init[stage_dim_insurance_policy,insurance_policy_key] TARGET_COLUMNS=shipping_address_encrypted_street,shipping_address_encrypted_suite
+
+
+#stage_dim_entity
+RAILS_ENV=production bundle exec rake db:decrypt:init[stage_dim_entity,entity_key] TARGET_COLUMNS=shipping_address_encrypted_street,shipping_address_encrypted_suite
+
+
+#stage_dim_lab
+RAILS_ENV=production bundle exec rake db:decrypt:init[stage_dim_lab,lab_key] TARGET_COLUMNS=shipping_address_encrypted_street,shipping_address_encrypted_suite,billing_address_encrypted_street,billing_address_encrypted_suite
+
+
+#dim_patient_service_center  has core encryption only from Nightly Load
+
+
+
+
+#SQL DDL
+
+CREATE TABLE `stage_dim_lab` (
+  `lab_key` int(11) NOT NULL AUTO_INCREMENT,
+  `lab_id` int(11) NOT NULL,
+  `lab_name` varchar(255) DEFAULT NULL,
+  `active` tinyint(4) DEFAULT NULL,
+  `lab_code_name` varchar(24) DEFAULT NULL,
+  `clia_id` varchar(255) DEFAULT NULL,
+  `director` varchar(100) DEFAULT NULL,
+  `lab_phone` varchar(100) DEFAULT NULL,
+  `timezone` varchar(255) DEFAULT NULL,
+  `kind` varchar(255) DEFAULT NULL,
+  `national_provider_identifier` int(11) DEFAULT NULL,
+  `tax_id` varchar(255) DEFAULT NULL,
+  `allow_test_notes` tinyint(4) DEFAULT NULL,
+  `requires_participant_signature` tinyint(4) DEFAULT NULL,
+  `allows_participant_registration` tinyint(4) DEFAULT NULL,
+  `allows_scheduling` tinyint(4) DEFAULT NULL,
+  `billing_address_id` int(11) DEFAULT NULL,
+  `billing_address_firm` varchar(38) DEFAULT NULL,
+  `billing_address_city` varchar(45) DEFAULT NULL,
+  `billing_address_state` varchar(2) DEFAULT NULL,
+  `billing_address_country` varchar(255) DEFAULT NULL,
+  `billing_address_zip5` varchar(5) DEFAULT NULL,
+  `billing_address_zip4` varchar(4) DEFAULT NULL,
+  `billing_address_encrypted_street` varchar(512) DEFAULT NULL,
+    `core_billing_address_encrypted_street` varchar(512) DEFAULT NULL,
+  `billing_address_encrypted_suite` varchar(512) DEFAULT NULL,
+    `core_billing_address_encrypted_suite` varchar(512) DEFAULT NULL,
+  `billing_address_lat` decimal(15,10) DEFAULT NULL,
+  `billing_address_lng` decimal(15,10) DEFAULT NULL,
+  `shipping_address_id` int(11) DEFAULT NULL,
+  `shipping_address_firm` varchar(38) DEFAULT NULL,
+  `shipping_address_city` varchar(45) DEFAULT NULL,
+  `shipping_address_state` varchar(2) DEFAULT NULL,
+  `shipping_address_country` varchar(255) DEFAULT NULL,
+  `shipping_address_zip5` varchar(5) DEFAULT NULL,
+  `shipping_address_zip4` varchar(4) DEFAULT NULL,
+  `shipping_address_encrypted_street` varchar(512) DEFAULT NULL,
+    `core_shipping_address_encrypted_street` varchar(512) DEFAULT NULL,
+  `shipping_address_encrypted_suite` varchar(512) DEFAULT NULL,
+    `core_shipping_address_encrypted_suite` varchar(512) DEFAULT NULL,
+  `shipping_address_lat` decimal(15,10) DEFAULT NULL,
+  `shipping_address_lng` decimal(15,10) DEFAULT NULL,
+  PRIMARY KEY (`lab_key`),
+  KEY `dim_lab_lab_code_name_Idx` (`lab_code_name`),
+  KEY `dim_lab_lab_id_Idx` (`lab_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=482 DEFAULT CHARSET=latin1;
+
+
+
+
+CREATE TABLE `stage_dim_entity` (
+  `entity_key` int(11) NOT NULL AUTO_INCREMENT,
+  `entity_id` int(11) NOT NULL,
+  `entity_name` varchar(255) DEFAULT NULL,
+  `partner_name` varchar(255) DEFAULT NULL,
+  `allows_public_signup` tinyint(4) DEFAULT NULL,
+  `store_access` tinyint(4) DEFAULT NULL,
+  `mobile_enabled` tinyint(4) DEFAULT NULL,
+  `flu_only` tinyint(4) DEFAULT NULL,
+  `lab_id` int(11) DEFAULT NULL,
+  `shipping_address_id` int(11) DEFAULT NULL,
+  `shipping_address_firm` varchar(38) DEFAULT NULL,
+  `shipping_address_city` varchar(45) DEFAULT NULL,
+  `shipping_address_state` varchar(2) DEFAULT NULL,
+  `shipping_address_country` varchar(255) DEFAULT NULL,
+  `shipping_address_zip5` varchar(5) DEFAULT NULL,
+  `shipping_address_zip4` varchar(4) DEFAULT NULL,
+  `shipping_address_encrypted_street` varchar(512) DEFAULT NULL,
+  `core_shipping_address_encrypted_street` varchar(512) DEFAULT NULL,
+  `shipping_address_encrypted_suite` varchar(512) DEFAULT NULL,
+  `core_shipping_address_encrypted_suite` varchar(512) DEFAULT NULL,
+  `shipping_address_lat` decimal(15,10) DEFAULT NULL,
+  `shipping_address_lng` decimal(15,10) DEFAULT NULL,
+  PRIMARY KEY (`entity_key`),
+  KEY `dim_entity_entity_id_idx` (`entity_id`),
+  KEY `dim_entity_entity_name_idx` (`entity_name`),
+  KEY `dim_entity_entity_partner_name_idx` (`partner_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=1362 DEFAULT CHARSET=latin1;
+
+
+
+CREATE TABLE `stage_dim_insurance_policy` (
+  `insurance_policy_key` int(11) NOT NULL AUTO_INCREMENT,
+  `insurance_policy_id` int(11) NOT NULL,
+  `insurance_policy_number` varchar(255) DEFAULT NULL,
+  `group_number` varchar(255) DEFAULT NULL,
+  `group_name` varchar(255) DEFAULT NULL,
+  `insurance_company_id` int(11) DEFAULT NULL,
+  `insurance_enrollment_id` int(11) DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  `shipping_address_id` int(11) DEFAULT NULL,
+  `shipping_address_firm` varchar(38) DEFAULT NULL,
+  `shipping_address_city` varchar(45) DEFAULT NULL,
+  `shipping_address_state` varchar(2) DEFAULT NULL,
+  `shipping_address_country` varchar(255) DEFAULT NULL,
+  `shipping_address_zip5` varchar(5) DEFAULT NULL,
+  `shipping_address_zip4` varchar(4) DEFAULT NULL,
+  `shipping_address_encrypted_street` varchar(512) DEFAULT NULL,
+  `core_shipping_address_encrypted_street` varchar(512) DEFAULT NULL,
+  `shipping_address_encrypted_suite` varchar(512) DEFAULT NULL,
+  `core_shipping_address_encrypted_suite` varchar(512) DEFAULT NULL,
+  `shipping_address_lat` decimal(15,10) DEFAULT NULL,
+  `shipping_address_lng` decimal(15,10) DEFAULT NULL,
+  PRIMARY KEY (`insurance_policy_key`),
+  KEY `dim_insurance_policy_group_number_Idx` (`group_number`),
+  KEY `dim_insurance_policy_insurance_company_id_Idx` (`insurance_company_id`),
+  KEY `dim_insurance_policy_insurance_policy_id_Idx` (`insurance_policy_id`),
+  KEY `dim_insurance_policy_insurance_policy_number_Idx` (`insurance_policy_number`)
+) ENGINE=InnoDB AUTO_INCREMENT=2403472 DEFAULT CHARSET=latin1;
+
+
+CREATE TABLE `stagetwo_physician_addresses` (
+  `id` int(11) NOT NULL,
+  `owner_type` varchar(128) DEFAULT NULL,
+  `owner_id` int(11) DEFAULT NULL,
+  `kind` varchar(16) DEFAULT NULL,
+  `firm` varchar(38) DEFAULT NULL,
+  `city` varchar(45) DEFAULT NULL,
+  `state` varchar(2) DEFAULT NULL,
+  `country` varchar(255) DEFAULT NULL,
+  `zip5` varchar(5) DEFAULT NULL,
+  `zip4` varchar(4) DEFAULT NULL,
+  `primary` tinyint(4) DEFAULT '1',
+  `encrypted_street` varchar(512) DEFAULT NULL,
+  `core_encrypted_street` varchar(512) DEFAULT NULL,
+  `encrypted_suite` varchar(512) DEFAULT NULL,
+  `core_encrypted_suite` varchar(512) DEFAULT NULL,
+  `lat` decimal(15,10) DEFAULT NULL,
+  `lng` decimal(15,10) DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `index_addresses_on_owner_id` (`owner_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+CREATE TABLE `stage_dim_program` (
+  `program_key` int(11) NOT NULL AUTO_INCREMENT,
+  `program_id` int(11) NOT NULL,
+  `program_name` varchar(255) DEFAULT NULL,
+  `program_code` varchar(255) DEFAULT NULL,
+  `entity_id` int(11) DEFAULT NULL,
+  `is_fulfilled` tinyint(4) DEFAULT NULL,
+  `enrollment_policy` int(11) DEFAULT NULL,
+  `max_enrollments` int(11) DEFAULT NULL,
+  `program_description` varchar(1000) DEFAULT NULL,
+  `contact` varchar(255) DEFAULT NULL,
+  `health_coaching` tinyint(4) DEFAULT NULL,
+  `allows_phone_enrollment` tinyint(4) DEFAULT NULL,
+  `created_at_date_key` int(11) DEFAULT NULL,
+  `created_at_time_key` int(11) DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `closes_at_date_key` int(11) DEFAULT NULL,
+  `closes_at_time_key` int(11) DEFAULT NULL,
+  `closes_at` datetime DEFAULT NULL,
+  `auto_export` tinyint(4) DEFAULT NULL,
+  `opens_at_date_key` int(11) DEFAULT NULL,
+  `opens_at_time_key` int(11) DEFAULT NULL,
+  `opens_at` datetime DEFAULT NULL,
+  `opened_at_date_key` int(11) DEFAULT NULL,
+  `opened_at_time_key` int(11) DEFAULT NULL,
+  `opened_at` datetime DEFAULT NULL,
+  `closed_at_date_key` int(11) DEFAULT NULL,
+  `closed_at_time_key` int(11) DEFAULT NULL,
+  `closed_at` datetime DEFAULT NULL,
+  `program_status` varchar(255) DEFAULT NULL,
+  `closed_message` varchar(255) DEFAULT NULL,
+  `spouse_auto_enroll` tinyint(4) DEFAULT NULL,
+  `spouse_email` tinyint(3) unsigned DEFAULT NULL,
+  `alternate_inventory_id` int(10) unsigned DEFAULT NULL,
+  `dependent_eligibility` tinyint(4) DEFAULT NULL,
+  `requires_unique_demographics` tinyint(4) DEFAULT NULL,
+  `default_alert_pct` int(11) DEFAULT NULL,
+  `total_eligible` int(11) DEFAULT NULL,
+  `staff_notes` text,
+  `updated_at` datetime DEFAULT NULL,
+  `closed_for_reorders` tinyint(4) DEFAULT NULL,
+  `external_client_name` varchar(255) DEFAULT NULL,
+  `report_at_date_key` int(11) DEFAULT NULL,
+  `report_at_time_key` int(11) DEFAULT NULL,
+  `report_at` datetime DEFAULT NULL,
+  `spouses` int(11) DEFAULT NULL,
+  `data_integration` tinyint(4) DEFAULT NULL,
+  `di_company` varchar(255) DEFAULT NULL,
+  `di_baa` varchar(255) DEFAULT NULL,
+  `di_file_format_sent` tinyint(4) DEFAULT NULL,
+  `white_list_date` datetime DEFAULT NULL,
+  `signup_steps` int(11) DEFAULT NULL,
+  `hr_contact_numbers` varchar(255) DEFAULT NULL,
+  `account_assignment_strategy_id` int(11) DEFAULT NULL,
+  `mobile_enabled` tinyint(4) DEFAULT NULL,
+  `shipping_address_id` int(11) DEFAULT NULL,
+  `shipping_address_firm` varchar(38) DEFAULT NULL,
+  `shipping_address_city` varchar(45) DEFAULT NULL,
+  `shipping_address_state` varchar(2) DEFAULT NULL,
+  `shipping_address_country` varchar(255) DEFAULT NULL,
+  `shipping_address_zip5` varchar(5) DEFAULT NULL,
+  `shipping_address_zip4` varchar(4) DEFAULT NULL,
+  `shipping_address_encrypted_street` varchar(512) DEFAULT NULL,
+  `core_shipping_address_encrypted_street` varchar(512) DEFAULT NULL,
+  `shipping_address_encrypted_suite` varchar(512) DEFAULT NULL,
+  `core_shipping_address_encrypted_suite` varchar(512) DEFAULT NULL,
+  `shipping_address_lat` decimal(15,10) DEFAULT NULL,
+  `shipping_address_lng` decimal(15,10) DEFAULT NULL,
+  `line_of_business` int(11) DEFAULT NULL,
+  PRIMARY KEY (`program_key`),
+  KEY `dim_program_program_code_Idx` (`program_code`),
+  KEY `dim_program_program_id_Idx` (`program_id`),
+  KEY `dim_program_program_name_Idx` (`program_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=82682 DEFAULT CHARSET=latin1;
+
+
+CREATE TABLE `stage_dim_event` (
+  `event_key` int(11) NOT NULL AUTO_INCREMENT,
+  `event_id` int(11) NOT NULL,
+  `kind` varchar(255) DEFAULT NULL,
+  `parent_event_id` int(11) DEFAULT NULL,
+  `schedulable_type` varchar(255) DEFAULT NULL,
+  `schedulable_id` int(11) DEFAULT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `starts_at_date_key` int(11) DEFAULT NULL,
+  `starts_at_time_key` int(11) DEFAULT NULL,
+  `starts_at` datetime DEFAULT NULL,
+  `ends_at_date_key` int(11) DEFAULT NULL,
+  `ends_at_time_key` int(11) DEFAULT NULL,
+  `ends_at` datetime DEFAULT NULL,
+  `max_attendees` int(11) DEFAULT NULL,
+  `location_id` int(11) DEFAULT NULL,
+  `location_name` varchar(255) DEFAULT NULL,
+  `location_address_id` int(11) DEFAULT NULL,
+  `address_owner_type` varchar(128) DEFAULT NULL,
+  `address_owner_id` int(11) DEFAULT NULL,
+  `address_kind` varchar(16) DEFAULT NULL,
+  `address_firm` varchar(38) DEFAULT NULL,
+  `city` varchar(45) DEFAULT NULL,
+  `state` varchar(2) DEFAULT NULL,
+  `country` varchar(255) DEFAULT NULL,
+  `zip5` varchar(5) DEFAULT NULL,
+  `zip4` varchar(4) DEFAULT NULL,
+  `primary` tinyint(4) DEFAULT NULL,
+  `encrypted_street` varchar(512) DEFAULT NULL,
+  `core_encrypted_street` varchar(512) DEFAULT NULL,
+  `encrypted_suite` varchar(512) DEFAULT NULL,
+  `core_encrypted_suite` varchar(512) DEFAULT NULL,
+  `street` varchar(512) DEFAULT NULL,
+  `core_street` varchar(512) DEFAULT NULL,
+  `suite` varchar(512) DEFAULT NULL,
+  `core_suite` varchar(512) DEFAULT NULL,
+  `lat` decimal(15,10) DEFAULT NULL,
+  `long` decimal(15,10) DEFAULT NULL,
+  `location_code` varchar(255) DEFAULT NULL,
+  `event_created_at` datetime DEFAULT NULL,
+  `event_updated_at` datetime DEFAULT NULL,
+  `optional` tinyint(4) DEFAULT NULL,
+  `fasting_required` tinyint(4) DEFAULT NULL,
+  `registration_closes_at_date_key` int(11) DEFAULT NULL,
+  `registration_closes_at_time_key` int(11) DEFAULT NULL,
+  `registration_closes_at` datetime DEFAULT NULL,
+  `alert_pct` int(11) DEFAULT NULL,
+  `nurses` int(11) DEFAULT NULL,
+  `walk_in` tinyint(4) DEFAULT NULL,
+  `lab_id` int(11) DEFAULT NULL,
+  `requires_consent_form` tinyint(4) DEFAULT NULL,
+  `billing_only` tinyint(4) DEFAULT NULL,
+  `code` varchar(255) DEFAULT NULL,
+  `registration_closure_offset` int(11) DEFAULT NULL,
+  `secondary_code` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`event_key`),
+  KEY `dim_event_event_id_Idx` (`event_id`),
+  KEY `dim_event_code_Idx` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=30323512 DEFAULT CHARSET=latin1;
+
+drop table stage_dim_user;
+
+
+CREATE TABLE `stage_dim_user` (
+  `user_key` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `user_program` varchar(255) DEFAULT NULL,
+  `user_email` varchar(255) DEFAULT NULL,
+  `username` varchar(80) DEFAULT NULL,
+  `bill_phone` varchar(16) DEFAULT NULL,
+  `ship_phone` varchar(16) DEFAULT NULL,
+  `created_on_date_key` int(11) DEFAULT NULL,
+  `created_on_time_key` int(11) DEFAULT NULL,
+  `created_on` datetime DEFAULT NULL,
+  `confirmed_on_date_key` int(11) DEFAULT NULL,
+  `confirmed_on_time_key` int(11) DEFAULT NULL,
+  `confirmed_on` datetime DEFAULT NULL,
+  `updated_on` datetime DEFAULT NULL,
+  `active` tinyint(4) DEFAULT NULL,
+  `gender` varchar(10) DEFAULT NULL,
+  `note` text,
+  `born_on` date DEFAULT NULL,
+  `entity_id` int(11) DEFAULT NULL,
+  `location` varchar(255) DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `last_login_at_date_key` int(11) DEFAULT NULL,
+  `last_login_at_time_key` int(11) DEFAULT NULL,
+  `last_login_at` datetime DEFAULT NULL,
+  `last_login_ip` varchar(16) DEFAULT NULL,
+  `prospect_id` int(11) DEFAULT NULL,
+  `timezone` varchar(255) DEFAULT NULL,
+  `activation_token` varchar(255) DEFAULT NULL,
+  `encrypted_first_name` varchar(255) DEFAULT NULL,
+  `core_encrypted_first_name` text,
+  `encrypted_last_name` varchar(255) DEFAULT NULL,
+  `core_encrypted_last_name` text,
+  `encrypted_external_pin` varchar(255) DEFAULT NULL,
+  `core_encrypted_external_pin` text,
+  `encrypted_ssn` varchar(255) DEFAULT NULL,
+  `core_encrypted_ssn` text,
+  `mobile_phone` varchar(255) DEFAULT NULL,
+  `access` datetime DEFAULT NULL,
+  `bill_addr1` varchar(512) DEFAULT NULL,
+  `core_bill_addr1` varchar(512) DEFAULT NULL,
+  `bill_addr2` varchar(512) DEFAULT NULL,
+  `core_bill_addr2` varchar(512) DEFAULT NULL,
+  `bill_city` varchar(255) DEFAULT NULL,
+  `bill_state` varchar(255) DEFAULT NULL,
+  `bill_zip` varchar(255) DEFAULT NULL,
+  `bill_country` varchar(255) DEFAULT NULL,
+  `bill_first_name` varchar(255) DEFAULT NULL,
+  `core_bill_first_name` varchar(255) DEFAULT NULL,
+  `bill_last_name` varchar(255) DEFAULT NULL,
+  `core_bill_last_name` varchar(255) DEFAULT NULL,
+  `cc_type` varchar(255) DEFAULT NULL,
+  `nickname` varchar(255) DEFAULT NULL,
+  `newsletter` tinyint(4) DEFAULT NULL,
+  `ship_addr1` varchar(512) DEFAULT NULL,
+  `core_ship_addr1` text,
+  `ship_addr2` varchar(512) DEFAULT NULL,
+  `core_ship_addr2` text,
+  `ship_city` varchar(255) DEFAULT NULL,
+  `ship_state` varchar(255) DEFAULT NULL,
+  `ship_zip` varchar(255) DEFAULT NULL,
+  `ship_country` varchar(255) DEFAULT NULL,
+  `signup_key` varchar(255) DEFAULT NULL,
+  `step` int(11) DEFAULT NULL,
+  `middle_initial` char(1) DEFAULT NULL,
+  `work_location` varchar(100) DEFAULT NULL,
+  `organization` varchar(100) DEFAULT NULL,
+  `labor_group_code` varchar(10) DEFAULT NULL,
+  `version` int(11) DEFAULT NULL,
+  `effective_at` datetime DEFAULT NULL,
+  `term_at` datetime DEFAULT NULL,
+  `is_current` tinyint(4) DEFAULT NULL,
+  `is_deleted` tinyint(4) DEFAULT NULL,
+  `current_encrypted_first_name` varchar(512) DEFAULT NULL,
+  `core_current_encrypted_first_name` varchar(512) DEFAULT NULL,
+  `current_encrypted_last_name` varchar(512) DEFAULT NULL,
+  `core_current_encrypted_last_name` varchar(512) DEFAULT NULL,
+  `physician_id` int(11) DEFAULT NULL,
+  `restore_updated` varchar(1) DEFAULT NULL,
+  `restore_date` datetime DEFAULT NULL,
+  PRIMARY KEY (`user_key`),
+  KEY `dim_user_entity_id_Idx` (`entity_id`),
+  KEY `dim_user_scd2_Idx` (`user_id`,`effective_at`,`term_at`,`user_key`),
+  KEY `dim_user_user_id_Idx` (`user_id`),
+  KEY `dim_user_username_Idx` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
